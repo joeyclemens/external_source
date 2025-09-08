@@ -2,19 +2,19 @@ use std::collections::{BTreeSet, HashMap};
 use std::net::ToSocketAddrs;
 
 use axum::{
-    body::Body,
-    extract::{DefaultBodyLimit, Multipart, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
-    response::Response,
-    routing::{get, post},
-    Json, Router,
+	body::Body,
+	extract::{DefaultBodyLimit, Multipart, State},
+	http::{HeaderMap, HeaderValue, StatusCode},
+	response::{Html, Response},
+	routing::{get, post},
+	Json, Router,
 };
 use futures_util::TryStreamExt;
 use rayon::prelude::*;
 use serde::Serialize;
 use tiberius::{AuthMethod, Client, Config, QueryItem};
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-use tower_http::{limit::RequestBodyLimitLayer, services::ServeDir};
+use tower_http::limit::RequestBodyLimitLayer;
 
 // =============== App State & Types ===============
 
@@ -55,7 +55,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/databases", get(list_databases))
         .route("/api/upload", post(upload_and_check))
-        .nest_service("/", ServeDir::new("public").append_index_html_on_directories(true))
+        .route("/", get(index))
+        .route("/index.html", get(index))
         .with_state(app_state)
         // Cap uploads to e.g. 15MB, and disable the default body limit so we only have one source of truth
         .layer(RequestBodyLimitLayer::new(15 * 1024 * 1024))
@@ -70,6 +71,11 @@ async fn main() {
 }
 
 // =============== Routes ===============
+
+async fn index() -> Html<&'static str> {
+    // Embed the frontend HTML directly into the binary
+    Html(include_str!("../public/index.html"))
+}
 
 async fn list_databases(
     State(cfg): State<AppConfig>,
