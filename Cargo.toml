@@ -1,0 +1,31 @@
+[package]
+name = "excel_checker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# --- Web server ---
+axum = { version = "0.7", features = ["multipart"] }
+tower-http = { version = "0.5", features = ["limit", "fs"] }
+tokio = { version = "1.39", features = ["full"] }
+
+# --- SQL Server ---
+# pick exactly one TLS backend; here we use rustls
+tiberius = { version = "0.12.3", default-features = false, features = ["rustls", "winauth"] }
+tokio-util = "0.7"
+futures-util = "0.3"
+
+# --- Excel I/O ---
+calamine = "0.24"
+rust_xlsxwriter = "0.67"
+
+# --- Matching & performance ---
+strsim = "0.11"
+rayon = "1.10"
+
+# --- Utilities ---
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
+chrono = { version = "0.4", features = ["clock"] }
+sanitize-filename = "0.5"

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Checker</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --accent: #6366f1;
+            --accent-2: #22d3ee;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: start center;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background:
+                radial-gradient(600px 300px at 15% 10%, color-mix(in oklab, CanvasText 14%, transparent), transparent 60%),
+                radial-gradient(800px 400px at 85% 20%, color-mix(in oklab, CanvasText 10%, transparent), transparent 65%),
+                canvas;
+            padding: 3rem 1.25rem;
+        }
+
+        .card {
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2.25rem;
+            border-radius: 14px;
+            background: color-mix(in oklab, Canvas, CanvasText 2%);
+            border: 1px solid color-mix(in oklab, CanvasText 18%, transparent);
+            box-shadow:
+                0 1px 0 color-mix(in oklab, CanvasText 4%, transparent) inset,
+                0 8px 24px color-mix(in oklab, CanvasText 10%, transparent),
+                0 2px 8px color-mix(in oklab, CanvasText 6%, transparent);
+        }
+
+        h1 {
+            margin: 0 0 .75rem 0;
+            font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+            line-height: 1.15;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+        h1::after {
+            content: "";
+            position: absolute;
+            left: 0; bottom: -8px;
+            width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border-radius: 2px;
+            opacity: .6;
+        }
+        .muted { opacity: .8; font-size: 1rem; margin: 0 0 1.5rem 0; }
+
+        form { display: grid; gap: 1.25rem; }
+
+        .section { padding: 1rem; border-radius: 10px; background: color-mix(in oklab, Canvas, CanvasText 1%); border: 1px solid color-mix(in oklab, CanvasText 10%, transparent); }
+
+        label { display: block; font-weight: 600; margin-bottom: .4rem; }
+
+        .controls { display: grid; gap: .75rem; }
+        .row { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+        .row > * { min-width: 0; }
+
+        @media (max-width: 860px) { .row { grid-template-columns: 1fr; } }
+
+        select, input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: .75rem .9rem;
+            border-radius: 10px;
+            border: 1px solid color-mix(in oklab, CanvasText 22%, transparent);
+            background: color-mix(in oklab, Canvas, CanvasText 2%);
+            color: inherit;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+        }
+
+        select:focus, input[type="number"]:focus, input[type="file"]:focus-within {
+            border-color: color-mix(in oklab, CanvasText 40%, transparent);
+            box-shadow: 0 0 0 3px color-mix(in oklab, CanvasText 10%, transparent);
+            background: color-mix(in oklab, Canvas, CanvasText 3%);
+        }
+
+        input::file-selector-button {
+            margin-right: .75rem;
+            padding: .55rem .9rem;
+            border: 1px solid color-mix(in oklab, CanvasText 22%, transparent);
+            border-radius: 8px;
+            background: color-mix(in oklab, Canvas, CanvasText 8%);
+            color: inherit;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            appearance: none;
+            height: 4px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: canvas;
+            border: 2px solid color-mix(in oklab, CanvasText 35%, transparent);
+            box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent);
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px; border-radius: 50%; border: 2px solid color-mix(in oklab, CanvasText 35%, transparent); background: canvas; cursor: pointer;
+        }
+        .actions { display: flex; gap: .75rem; padding-top: .5rem; }
+        .status { margin-top: .5rem; min-height: 1.25rem; font-size: .98rem; }
+
+        button {
+            padding: .85rem 1.1rem;
+            border-radius: 10px;
+            border: 1px solid color-mix(in oklab, CanvasText 18%, transparent);
+            background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 75%, Canvas 15%), color-mix(in oklab, var(--accent-2) 75%, Canvas 15%));
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 18px color-mix(in oklab, var(--accent-2) 25%, transparent);
+        }
+        button:hover { filter: brightness(1.05); }
+        button:active { transform: translateY(1px); }
+        button[type="reset"] { background: transparent; color: inherit; box-shadow: none; }
+    </style>
+    <script>
+        async function fetchDatabases() {
+            const dbSelect = document.getElementById('db');
+            dbSelect.innerHTML = '<option value="" disabled selected>Loading…</option>';
+            try {
+                const res = await fetch('/api/databases');
+                if (!res.ok) throw new Error('Failed to load databases');
+                const data = await res.json();
+                dbSelect.innerHTML = '<option value="" disabled selected>Select a database</option>';
+                (data.databases || []).forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name; opt.textContent = name; dbSelect.appendChild(opt);
+                });
+            } catch (err) {
+                dbSelect.innerHTML = '<option value="" disabled selected>Error loading databases</option>';
+                setStatus(String(err), true);
+            }
+        }
+
+        function setStatus(msg, isError=false) {
+            const el = document.getElementById('status');
+            el.textContent = msg || '';
+            el.style.color = isError ? '#b00020' : 'inherit';
+        }
+
+        async function submitForm(ev) {
+            ev.preventDefault();
+            setStatus('Uploading…');
+            const form = document.getElementById('form');
+            const db = document.getElementById('db').value;
+            const fileInput = document.getElementById('file');
+            const thresholdRange = document.getElementById('thresholdRange');
+            if (!db) { setStatus('Please select a database.', true); return; }
+            if (!fileInput.files || fileInput.files.length === 0) { setStatus('Please choose an Excel file.', true); return; }
+
+            const fd = new FormData();
+            fd.append('db', db);
+            fd.append('file', fileInput.files[0]);
+            const thr = thresholdRange ? thresholdRange.value : '';
+            if (thr !== '') fd.append('threshold', String(Number(thr) / 100));
+
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    throw new Error(text || ('Upload failed with status ' + res.status));
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'results.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                setStatus('Done. Your download should start automatically.');
+            } catch (err) {
+                setStatus(String(err), true);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchDatabases();
+            document.getElementById('form').addEventListener('submit', submitForm);
+            const range = document.getElementById('thresholdRange');
+            const out = document.getElementById('thresholdOut');
+            if (range && out) {
+                const update = () => { out.textContent = `${range.value}%`; };
+                range.addEventListener('input', update);
+                update();
+            }
+        });
+    </script>
+    </head>
+<body>
+    <div class="card">
+        <h1>Excel Checker</h1>
+        <p class="muted">Select a database, upload your Excel file, and download results.</p>
+        <form id="form">
+            <label for="db">Database</label>
+            <select id="db" required></select>
+
+            <div>
+                <label for="file">Excel file (.xlsx)</label>
+                <input id="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+            </div>
+            <div>
+                <label for="thresholdRange">Similarity threshold</label>
+                <div class="controls">
+                    <input id="thresholdRange" type="range" min="0" max="100" step="1" value="30" />
+                    <div style="display:flex; justify-content: space-between; align-items:center;">
+                        <small>0%</small>
+                        <strong id="thresholdOut">30%</strong>
+                        <small>100%</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit">Upload & Generate</button>
+                <button type="reset" onclick="setStatus('')">Reset</button>
+            </div>
+            <div id="status" class="status"></div>
+        </form>
+    </div>
+</body>
+</html>
+
+
